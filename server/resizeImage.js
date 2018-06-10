@@ -9,16 +9,15 @@ const cache = new Cache();
 router.get('/', (req, res) =>{
   var url = req.query.url;
   imageHash(url, 16, true, (err, data)=>{
-    if(err) console.log(err);
-    cache.get(data) ?
-      cache.get(data).pipe(res):
-      request
-        .get(url, (err)=>{
-          if(err) res.status(404).send('Wrong url provided');
-        })
-        .on('response', (response)=>{
-          resize(response, data, res);
-        });
+    var hash = err ? 'else' : data;
+    cache.get(hash) ?
+    cache.get(hash).pipe(res) :
+    request.get(url, (err)=>{
+      if(err) res.status(404).send('Wrong url provided');
+    })
+    .on('response', (response)=>{
+      resize(response, hash, res);
+    });
   });
 });
 
