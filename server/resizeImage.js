@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const Jimp = require('jimp');
 const sharp = require('sharp');
-var request = require('request');
+const request = require('request');
 
 router.get('/', (req, res) =>{
   var url = req.query.url;
@@ -10,16 +10,20 @@ router.get('/', (req, res) =>{
       if(err) res.status(404).send('Wrong url provided');
     })
     .on('response', (response)=>{
-      let mimeType = response.headers['content-type'];
-        res.type(mimeType);
-        resizeImage(response).pipe(res);
+      var Sharp = sharp();
+      Sharp.metadata()
+      .then(info=>{
+        if(info.width < 640 || info.height < 480){
+          res.status(422).send(`Image is too small to be converted to 640x480; Width: ${info.width} and height: ${info.height}`);
+        } else {
+          let mimeType = response.headers['content-type'];
+          res.type(mimeType);
+          Sharp.resize(640, 480);
+          response.pipe(Sharp).pipe(res);
+        }
+      });
+      response.pipe(Sharp);
     });
 });
-
-function resizeImage (stream) {
-  let Sharp = sharp();
-  Sharp.resize(640,480);
-  return stream.pipe(Sharp);
-}
 
 module.exports = router;
