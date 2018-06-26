@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const sharp = require('sharp');
-const request = require('request');
+const request = require('request').defaults({ encoding: null });
 const imageHash = require('image-hash');
 const Cache = require('streaming-cache');
 
@@ -8,34 +8,66 @@ const cache = new Cache();
 
 router.get('/', (req, res) =>{
   var url = req.query.url;
-  imageHash(url, 16, true, (err, data)=>{
-    if(err) console.log(err);
-    cache.get(data) ?
-      cache.get(data).pipe(res):
-      request
-        .get(url, (err)=>{
-          if(err) res.status(404).send('Wrong url provided');
-        })
-        .on('response', (response)=>{
-          resize(response, data, res);
-        });
+  request(url, async (err, response, buffer) => {
+    if(err) res.status(404).send('Wrong url provided');
+    try{
+        let img = await resize(buffer);
+        let mimeType = response.headers['content-type'];
+        res.type(mimeType).send(img);
+      } catch (err){
+        console.log(err);
+        res.status(404).send(err);
+      }
   });
 });
 
-function resize(stream, hash, res){
-  var Sharp = sharp();
-  Sharp.metadata()
-  .then(info=>{
+async function resize (buffer){
+  var img = await sharp(buffer);
+  const info = await img.metadata();
+
+  return new Promise ((resolve, reject) => {
     if(info.width < 640 || info.height < 480){
-      res.status(422).send(`Image is too small to be converted to 640x480; Width: ${info.width} and height: ${info.height}`);
+      reject(`Provided image is too small for resizing: width = ${info.width}, height = ${info.height}`);
     } else {
-      let mimeType = stream.headers['content-type'];
-      res.type(mimeType);
-      Sharp.resize(640, 480);
-      stream.pipe(Sharp).pipe(cache.set(hash)).pipe(res);
+      img.resize(640, 480);
+      resolve(img.toBuffer());
     }
-  });
-  stream.pipe(Sharp);
+  })
 }
+
+
+/*router.get('/', (req, res) =>{
+  var url = req.query.url;
+  request
+    .get(url, (err)=>{
+      if(err) res.status(404).send('Wrong url provided');
+    })
+    .on('response', async(response) => {
+      try{
+        let img = await resize(response);
+        let mimeType = response.headers['content-type'];
+        res.type(mimeType);
+        img.pipe(res);
+      } catch (err){
+        console.log(err);
+        res.status(404).send(err);
+      }
+  });
+});
+
+async function resize (stream){
+  var Sharp = sharp();
+  stream.pipe(Sharp);
+  const info = await Sharp.metadata();
+
+  return new Promise ((resolve, reject) => {
+    if(info.width < 640 || info.height < 480){
+      reject(`Provided image is too small for resizing: width = ${info.width}, height = ${info.height}`);
+    } else {
+      Sharp.resize(640, 480);
+      resolve(stream.pipe(Sharp));
+    }
+  })
+}*/
 
 module.exports = router;
