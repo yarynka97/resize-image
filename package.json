@@ -11,8 +11,6 @@
   "license": "ISC",
   "dependencies": {
     "request": "^2.87.0",
-    "image-hash": "^1.0.7",
-    "streaming-cache": "^0.5.1",
-    "gm": "^1.23.1"
+    "sharp": "^0.20.4"
   }
 }

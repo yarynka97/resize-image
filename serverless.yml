@@ -1,0 +1,16 @@
+service: resize-image
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+
+functions:
+  resize:
+    handler: server/resizeImage.resize
+    description: resize given image to 640x480
+    events:
+      - http:
+          path: /
+          method: get
+    package:
+      excludeDevDependencies: true
